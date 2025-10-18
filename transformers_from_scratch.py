@@ -228,5 +228,22 @@ if __name__ == "__main__":
     max_seq_len = 100
     dropout = 0.1
     padding_idx = 0
+      model = Transformer(
+        src_vocab_size, tgt_vocab_size,
+        d_model, num_heads, d_ff,
+        num_layers, max_seq_len, dropout
+    ).to(device)
+
+    src = torch.randint(0, src_vocab_size, (32, max_seq_len)).to(device)
+    tgt = torch.randint(0, tgt_vocab_size, (32, max_seq_len)).to(device)
+    print("Source Shape:", src.shape)
+    print("Target Shape:", tgt.shape)
+    src_mask = model.create_src_mask(src, padding_idx).to(device)
+    tgt_mask = model.create_tgt_mask(tgt, padding_idx).to(device)
+
+    output = model(src, tgt, src_mask, tgt_mask)
+
+    print("Transformer Output Shape:", output.shape)
+
 
   
