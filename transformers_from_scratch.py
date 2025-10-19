@@ -1,8 +1,8 @@
+#import
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
-import numpy as np
 
 class SelfAttention:
     def __init__(self):
@@ -55,7 +55,6 @@ class MultiHeadAttention(nn.Module):
         Q = self.query(q)
         K = self.key(k)
         V = self.value(v)
-
         Q = Q.view(batch_size, -1, self.num_heads, self.d_k).transpose(1, 2)
         K = K.view(batch_size, -1, self.num_heads, self.d_k).transpose(1, 2)
         V = V.view(batch_size, -1, self.num_heads, self.d_k).transpose(1, 2)    
