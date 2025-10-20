@@ -5,7 +5,6 @@ import torch.nn.functional as F
 import math
 import numpy as np
 
-
 class SelfAttention:
     def __init__(self):
         self.data = np.random.normal(size=(50, 50))
