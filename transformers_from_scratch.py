@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 import numpy as np
-
+import matplotlib as plt
 class SelfAttention:
     def __init__(self):
         self.data = np.random.normal(size=(50, 50))
