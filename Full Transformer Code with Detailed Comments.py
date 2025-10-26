@@ -242,6 +242,8 @@ if __name__ == "__main__":
     tgt_mask = model.create_tgt_mask(tgt, padding_idx).to(device)
 
     output = model(src, tgt, src_mask, tgt_mask)
+    print("Transformer Output Shape:", output.shape)
+
 
 
 
