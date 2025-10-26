@@ -243,7 +243,6 @@ if __name__ == "__main__":
 
     output = model(src, tgt, src_mask, tgt_mask)
 
-    print("Transformer Output Shape:", output.shape)
 
 
   
