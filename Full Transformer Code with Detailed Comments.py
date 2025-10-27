@@ -1,14 +1,23 @@
-#import
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import math
-import numpy as np
-import matplotlib as plt
+# =============================================================
+# IMPORTS
+# =============================================================
+import torch                      # PyTorch for tensor operations
+import torch.nn as nn             # Neural network layers & modules
+import torch.nn.functional as F   # For activation functions like ReLU, softmax, etc.
+import math                       # For square roots and pi (used in scaling attention scores)
+import numpy as np                # For numerical operations and matrix handling
+import matplotlib as plt           # (Optional) Used for visualization if needed
+
+
+# =============================================================
+# 1️⃣ BASIC SELF-ATTENTION (numpy version)
+# =============================================================
 class SelfAttention:
     def __init__(self):
+        # Random input data of shape (50, 50)
         self.data = np.random.normal(size=(50, 50))
 
+        # Random weight matrices for Key, Query, and Value
         self.weight_key = np.random.normal(size=(50, 50))
         self.weight_query = np.random.normal(size=(50, 50))
         self.weight_value = np.random.normal(size=(50, 50))
@@ -27,57 +36,82 @@ class SelfAttention:
         query = self.query()
         value = self.value()
 
+        # Compute attention scores = QKᵀ / √d_k
         scores = key @ query.T
         scores = scores / key.shape[0]**0.5
+
+        # Apply softmax normalization
         scores = np.exp(scores) / np.sum(scores)
 
+        # Weighted sum of values
         attn = scores @ value
         return attn
 
+
+# =============================================================
+# 2️⃣ MULTI-HEAD ATTENTION MODULE
+# =============================================================
 class MultiHeadAttention(nn.Module):
     def __init__(self, d_model, num_heads):
         super(MultiHeadAttention, self).__init__()
 
+        # Ensure d_model is divisible by number of heads
         assert d_model % num_heads == 0, "d_model must be divisible by num_heads"
 
         self.d_model = d_model
         self.num_heads = num_heads
-        self.d_k = d_model // num_heads
+        self.d_k = d_model // num_heads  # Dim per head
 
+        # Linear layers to project Q, K, and V
         self.query = nn.Linear(d_model, d_model)
         self.key = nn.Linear(d_model, d_model)
         self.value = nn.Linear(d_model, d_model)
 
+        # Linear layer to combine multi-head outputs
         self.out = nn.Linear(d_model, d_model)
 
     def forward(self, q, k, v, mask=None):
         batch_size = q.size(0)
 
+        # Linear projections for Q, K, V
         Q = self.query(q)
         K = self.key(k)
         V = self.value(v)
+
+        # Split into multiple heads (batch_size, num_heads, seq_len, d_k)
         Q = Q.view(batch_size, -1, self.num_heads, self.d_k).transpose(1, 2)
         K = K.view(batch_size, -1, self.num_heads, self.d_k).transpose(1, 2)
         V = V.view(batch_size, -1, self.num_heads, self.d_k).transpose(1, 2)    
 
+        # Compute attention scores using scaled dot product
         scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_k)
 
+        # Apply mask if given (for padding or causal masking)
         if mask is not None:
             mask = torch.broadcast_to(mask.unsqueeze(1), (batch_size, self.num_heads, mask.shape[-1], mask.shape[-1]))
-            scores = scores.masked_fill(mask == 0, -1e20)
+            scores = scores.masked_fill(mask == 0, -1e20)  # Masked positions = very negative
 
+        # Apply softmax to get attention weights
         attention_weights = F.softmax(scores, dim=-1)
 
+        # Multiply attention weights with values
         attention_output = torch.matmul(attention_weights, V)
+
+        # Concatenate heads back
         attention_output = attention_output.transpose(1, 2).contiguous().view(batch_size, -1, self.d_model)
 
+        # Final linear layer to combine outputs
         output = self.out(attention_output)
         return output
 
 
+# =============================================================
+# 3️⃣ POSITION-WISE FEED-FORWARD NETWORK
+# =============================================================
 class FeedForward(nn.Module):
     def __init__(self, d_model, d_ff):
         super(FeedForward, self).__init__()
+        # Two linear transformations with ReLU in between
         self.linear1 = nn.Linear(d_model, d_ff)
         self.linear2 = nn.Linear(d_ff, d_model)
     
@@ -87,73 +121,111 @@ class FeedForward(nn.Module):
         return x
 
 
+# =============================================================
+# 4️⃣ ENCODER LAYER
+# =============================================================
 class EncodingLayer(nn.Module):
     def __init__(self, d_model, num_heads, d_ff, dropout=0.1):
         super(EncodingLayer, self).__init__()
         self.self_attn = MultiHeadAttention(d_model, num_heads)
         self.feed_forward = FeedForward(d_model, d_ff)
-        self.norm1 = nn.LayerNorm(d_model)
-        self.norm2 = nn.LayerNorm(d_model)
+        self.norm1 = nn.LayerNorm(d_model)   # Normalize after self-attn
+        self.norm2 = nn.LayerNorm(d_model)   # Normalize after FFN
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x, mask=None):
+        # Multi-head self-attention
         attn_output = self.self_attn(x, x, x, mask)
-        x = self.norm1(x + self.dropout(attn_output))
+        x = self.norm1(x + self.dropout(attn_output))  # Add & Norm
+
+        # Feed-forward layer
         ff_output = self.feed_forward(x)
-        x = self.norm2(x + self.dropout(ff_output))
+        x = self.norm2(x + self.dropout(ff_output))    # Add & Norm
         return x
 
 
+# =============================================================
+# 5️⃣ ENCODER MODULE
+# =============================================================
 class Encoder(nn.Module):
     def __init__(self, d_model, num_heads, d_ff, num_layers, vocab_size, max_seq_len, dropout=0.1):
         super(Encoder, self).__init__()
+        # Token embedding
         self.embedding = nn.Embedding(vocab_size, d_model)
+
+        # Precomputed positional encoding
         self.positional_encoding = self._generate_positional_encoding(max_seq_len, d_model)
+
+        # Stack of encoder layers
         self.layers = nn.ModuleList([
             EncodingLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)
         ])
         self.dropout = nn.Dropout(dropout)
     
     def _generate_positional_encoding(self, max_seq_len, d_model):
+        # Compute position and dimension indices
         position = torch.arange(max_seq_len).unsqueeze(1)
         i = torch.arange(d_model).unsqueeze(0)
+
+        # Compute angle rates based on formula in Attention Is All You Need
         angle_rates = 1 / torch.pow(10000, (2 * (i // 2)) / torch.tensor(d_model, dtype=torch.float32))
         positional_encoding = position * angle_rates
+
+        # Apply sin to even indices, cos to odd indices
         positional_encoding[:, 0::2] = torch.sin(positional_encoding[:, 0::2])
         positional_encoding[:, 1::2] = torch.cos(positional_encoding[:, 1::2])
+
         return positional_encoding.unsqueeze(0)
 
     def forward(self, x, mask=None):
         seq_len = x.size(1)
+
+        # Add token embedding + positional encoding
         x = self.embedding(x)
         x += self.positional_encoding[:, :seq_len, :]
         x = self.dropout(x)
+
+        # Pass through all encoder layers
         for layer in self.layers:
             x = layer(x, mask)
         return x
 
+
+# =============================================================
+# 6️⃣ DECODER LAYER
+# =============================================================
 class DecoderLayer(nn.Module):
     def __init__(self, d_model, num_heads, d_ff, dropout=0.1):
         super(DecoderLayer, self).__init__()
+        # Self-attention (masked)
         self.self_attn = MultiHeadAttention(d_model, num_heads)
+        # Cross-attention (encoder-decoder)
         self.cross_attn = MultiHeadAttention(d_model, num_heads)
         self.feed_forward = FeedForward(d_model, d_ff)
+        # Layer norms
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
         self.norm3 = nn.LayerNorm(d_model)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x, enc_output, tgt_mask=None, memory_mask=None):
+        # Masked self-attention
         self_attn_output = self.self_attn(x, x, x, tgt_mask)
         x = self.norm1(x + self.dropout(self_attn_output))
 
+        # Encoder-decoder cross-attention
         cross_attn_output = self.cross_attn(x, enc_output, enc_output, memory_mask)
         x = self.norm2(x + self.dropout(cross_attn_output))
 
+        # Feed-forward network
         ff_output = self.feed_forward(x)
         x = self.norm3(x + self.dropout(ff_output))
         return x
 
+
+# =============================================================
+# 7️⃣ DECODER MODULE
+# =============================================================
 class Decoder(nn.Module):
     def __init__(self, d_model, num_heads, d_ff, num_layers, vocab_size, max_seq_len, dropout=0.1):
         super(Decoder, self).__init__()
@@ -182,11 +254,17 @@ class Decoder(nn.Module):
             x = layer(x, enc_output, tgt_mask, memory_mask)
         return x
 
+
+# =============================================================
+# 8️⃣ COMPLETE TRANSFORMER MODEL
+# =============================================================
 class Transformer(nn.Module):
     def __init__(self, src_vocab_size, tgt_vocab_size, d_model, num_heads, d_ff, num_layers, max_seq_len, dropout=0.1):
         super(Transformer, self).__init__()
+        # Encoder + Decoder
         self.encoder = Encoder(d_model, num_heads, d_ff, num_layers, src_vocab_size, max_seq_len, dropout)
         self.decoder = Decoder(d_model, num_heads, d_ff, num_layers, tgt_vocab_size, max_seq_len, dropout)
+        # Final linear layer mapping decoder output to vocabulary logits
         self.final_layer = nn.Linear(d_model, tgt_vocab_size)
 
     def forward(self, src, tgt, src_mask=None, tgt_mask=None, memory_mask=None):
@@ -196,19 +274,25 @@ class Transformer(nn.Module):
         return final_output
     
     def create_src_mask(self, src, padding_idx):
+        # Mask out padding tokens (1 = keep, 0 = mask)
         return (src != padding_idx).unsqueeze(-2)
 
     def create_tgt_mask(self, tgt, padding_idx):
         tgt_pad_mask = (tgt != padding_idx).unsqueeze(-2)
         tgt_len = tgt.size(1)
+        # Lower-triangular mask for causal attention
         tgt_sub_mask = torch.tril(torch.ones((tgt_len, tgt_len), device=tgt.device)).bool()
         tgt_mask = tgt_pad_mask & tgt_sub_mask
         return tgt_mask
-    
+
+
+# =============================================================
+# 9️⃣ MODEL TESTING (MAIN EXECUTION)
+# =============================================================
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
+    # Dummy source and target sentences (token IDs)
     src = torch.tensor([
         [1, 5, 6, 4, 3, 9, 5, 2, 0],
         [1, 8, 7, 3, 4, 5, 6, 7, 2]
@@ -219,6 +303,7 @@ if __name__ == "__main__":
         [1, 5, 6, 2, 4, 7, 6, 2]
     ]).to(device)
 
+    # Hyperparameters
     src_vocab_size = 10000
     tgt_vocab_size = 10000
     d_model = 512
@@ -228,23 +313,27 @@ if __name__ == "__main__":
     max_seq_len = 100
     dropout = 0.1
     padding_idx = 0
-      model = Transformer(
+
+    # Instantiate Transformer model
+    model = Transformer(
         src_vocab_size, tgt_vocab_size,
         d_model, num_heads, d_ff,
         num_layers, max_seq_len, dropout
     ).to(device)
 
+    # Random batch (32 examples, each with max_seq_len tokens)
     src = torch.randint(0, src_vocab_size, (32, max_seq_len)).to(device)
     tgt = torch.randint(0, tgt_vocab_size, (32, max_seq_len)).to(device)
+
     print("Source Shape:", src.shape)
     print("Target Shape:", tgt.shape)
+
+    # Create masks
     src_mask = model.create_src_mask(src, padding_idx).to(device)
     tgt_mask = model.create_tgt_mask(tgt, padding_idx).to(device)
 
+    # Forward pass
     output = model(src, tgt, src_mask, tgt_mask)
+
+    # Output shape = [batch_size, seq_len, vocab_size]
     print("Transformer Output Shape:", output.shape)
-
-
-
-
-  
