@@ -9,7 +9,7 @@ import matplotlib as plt           # (Optional) Used for visualization if needed
 
 
 # =============================================================
-# 1️⃣ BASIC SELF-ATTENTION (numpy version)
+# 1️ BASIC SELF-ATTENTION (numpy version)
 # =============================================================
 class SelfAttention:
     def __init__(self):
