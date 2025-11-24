@@ -2,7 +2,7 @@
 # IMPORTS
 import torch                      # PyTorch for tensor operations
 import torch.nn as nn             # Neural network layers & modules
-import torch.nn.functional as F   # For activation functions like ReLU, softmax, etc.
+import torch.nn.functional as F   # For activation functions like ReLU, softmax
 import math                       # For square roots and pi (used in scaling attention scores)
 import numpy as np                # For numerical operations and matrix handling
 import matplotlib as plt           # (Optional) Used for visualization if needed
