@@ -7,7 +7,7 @@ transformer_from_scratch.py — Main script containing modular implementations o
 
 Fully built using native PyTorch (nn.Module) without relying on high-level abstractions.
 
-How to run:
+How to run::
 git clone https://github.com/sanhith30/attention-is-all-you-need
 cd attention-is-all-you-need
 python transformers_from_scratch.py
