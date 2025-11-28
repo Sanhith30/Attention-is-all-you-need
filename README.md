@@ -5,7 +5,7 @@ This project is a PyTorch-based reimplementation of the original Transformer arc
 Structure
 transformer_from_scratch.py — Main script containing modular implementations of attention, feedforward layers, and positional embeddings.
 
-Fully built using native PyTorch (nn.Module) without relying on high-level abstractions.
+Fully built using native PyTorch (nn.Module) without relying on high-level abstractions:
 
 How to run::
 git clone https://github.com/sanhith30/attention-is-all-you-need
