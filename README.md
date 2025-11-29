@@ -11,4 +11,4 @@ How to run::
 git clone https://github.com/sanhith30/attention-is-all-you-need
 cd attention-is-all-you-need
 python transformers_from_scratch.py
-Requires: Python 3.8+, PyTorch 1.13+
+Requires: Python 3.8+, PyTorch 1.13
