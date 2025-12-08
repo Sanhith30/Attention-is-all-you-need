@@ -7,7 +7,7 @@ import numpy as np                # For numerical operations and matrix handling
 import matplotlib as plt           # Used for visualization
 
 
-# =============================================
+# ===========================================
 # 1️ BASIC SELF-ATTENTION (numpy)
 # ============================================
 class SelfAttention:
