@@ -47,7 +47,7 @@ class SelfAttention:
 
 
 # =============================================================
-# 2️⃣ MULTI-HEAD ATTENTION MODULE
+# 2️ MULTI-HEAD ATTENTION MODULE
 # =============================================================
 class MultiHeadAttention(nn.Module):
     def __init__(self, d_model, num_heads):
